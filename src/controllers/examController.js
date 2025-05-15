@@ -7,7 +7,7 @@ exports.getAllExam = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10
         const skip = (page - 1) * limit
 
-        const exams = await Exam.find()
+        const exams = await Exam.find({ isPublic: true })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -19,7 +19,10 @@ exports.getAllExam = async (req, res) => {
 }
 exports.getExam = async (req, res) => {
     try {
-        const exam = await Exam.findById(req.params.id);
+        const exam = await Exam.findOne({
+            _id: req.params.id,
+            isPublic: true
+        });
         if (!exam) {
             return res.status(404).json({ message: 'Không tìm thấy đề thi' });
         }
@@ -59,7 +62,10 @@ exports.getExamOfUser = async (req, res) => {
 exports.searchExam = async (req, res) => {
     try {
         const query = req.query.q
-        const exam = await Exam.find({ name: { $regex: query, $options: 'i' } }).populate('createdBy', 'name')
+        const exam = await Exam.find({
+            name: { $regex: query, $options: 'i' },
+            isPublic: true
+        }).populate('createdBy', 'name')
         if (!exam) {
             return res.status(404).json({ message: 'Không tìm thấy đề thi' })
         }
@@ -71,40 +77,45 @@ exports.searchExam = async (req, res) => {
 exports.addExam = async (req, res) => {
     try {
         const { name, sections } = req.body
+        const isPublic = req.body.isPublic
         const createdBy = req.user.id
 
+
+        if (!name || !sections || !Array.isArray(sections)) {
+            return res.status(400).json({ message: 'Dữ liệu không hợp lệ: cần có name và sections' })
+        }
         const slug = slugify(name, {
             lower: true,
             strict: true
         })
 
-        if (!name || !sections || !Array.isArray(sections)) {
-            return res.status(400).json({ message: 'Dữ liệu không hợp lệ: cần có name và sections' })
-        }
-
-        const newExam = new Exam({ name, slug, createdBy, sections })
+        const newExam = new Exam({ name, slug, isPublic, createdBy, sections })
         await newExam.save()
 
         res.status(201).json({ message: 'Đề thi đã được lưu', exam: newExam })
     } catch (error) {
-        res.status(500).json({ message: err.message })
+        res.status(500).json({ message: error.message })
     }
 }
 exports.updateExam = async (req, res) => {
     const examId = req.params.examId
     const name = req.body.name
+    const isPublic = req.body.isPublic
     const { id, role } = req.user
     try {
         const exam = await Exam.findById(examId).populate('createdBy', 'name')
         if (!exam) res.status(404).json({ message: 'Không tìm thấy bài thi' })
         if (id != exam.createdBy.id && role != "admin") return res.status(404).json({ message: 'Bạn không có quyền chỉnh sửa đối với bài thi của người khác' })
-        const slug = slugify(name, {
-            lower: true,
-            strict: true
-        })
         if (name) {
+            const slug = slugify(name, {
+                lower: true,
+                strict: true
+            })
             exam.name = name
             exam.slug = slug
+        }
+        if (isPublic) {
+            exam.isPublic = isPublic
         }
         await exam.save()
         res.status(200).json({ message: 'Cập nhật thành công' })

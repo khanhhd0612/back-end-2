@@ -14,6 +14,7 @@ const sectionSchema = new mongoose.Schema({
 const examSchema = new mongoose.Schema({
     name: String,
     slug: String,
+    isPublic: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdAt: {
         type: Date,
