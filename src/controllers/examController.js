@@ -1,4 +1,5 @@
 const Exam = require('../models/Exam')
+const Score = require('../models/ExamScore')
 const slugify = require('slugify')
 
 exports.getAllExam = async (req, res) => {
@@ -7,13 +8,19 @@ exports.getAllExam = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10
         const skip = (page - 1) * limit
 
-        const exams = await Exam.find({ isPublic: true })
+        const totalItems = await Exam.countDocuments()
+
+        const exams = await Exam.find()
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
             .populate('createdBy', 'name')
-        res.json(exams)
+        res.json({
+            exam: exams,
+            totalPages: Math.ceil(totalItems / limit)
+        })
     } catch (err) {
+        console.log(err)
         res.status(500).json({ message: err.message })
     }
 }
@@ -22,7 +29,7 @@ exports.getExam = async (req, res) => {
         const exam = await Exam.findOne({
             _id: req.params.id,
             isPublic: true
-        });
+        }).populate('createdBy', 'name');
         if (!exam) {
             return res.status(404).json({ message: 'Không tìm thấy đề thi' });
         }
@@ -135,6 +142,7 @@ exports.deleteExam = async (req, res) => {
             return res.status(404).json({ message: 'Bạn không có quyền xóa bài thi này' });
         }
         await Exam.findByIdAndDelete(examId);
+        await Score.deleteMany({ examId });
 
         return res.status(200).json({ message: 'Đã xóa' });
     } catch (err) {

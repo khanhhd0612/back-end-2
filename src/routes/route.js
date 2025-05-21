@@ -6,6 +6,7 @@ const { getQuestion, updateQuestion, deleteQuestion, addQuestion, getAllQuestion
 const { register, login, loginAdmin } = require('../controllers/authController');
 const { profile, deleteUser, updatePassword, updateRole, getAllUser, updateName, forgotPassword, resetPassword, getAdmin } = require('../controllers/userController');
 const { getSection, addSection, updateSection, deleteSection } = require('../controllers/sectionController');
+const { getScore, addScore } = require('../controllers/scoreController');
 const { checkLogin, checkRole } = require("../middleware/authMiddleware");
 
 router.get('/exam/', getAllExam);
@@ -41,6 +42,8 @@ router.post('/question/:examId/:sectionId', checkLogin, addQuestion);
 router.put('/question/:examId/:sectionId/:questionId', checkLogin, updateQuestion);
 router.delete('/question/:examId/:sectionId/:questionId', checkLogin, deleteQuestion);
 
+router.get('/score/:examId', checkLogin, getScore);
+router.post('/score', checkLogin, addScore);
 
 //
 router.get('/exam/:examId/sections', checkLogin, getSection)

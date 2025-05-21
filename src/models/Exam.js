@@ -14,6 +14,9 @@ const sectionSchema = new mongoose.Schema({
 const examSchema = new mongoose.Schema({
     name: String,
     slug: String,
+    totalAttempts: { type: Number, default: 0 },
+    examAttempt: { type: Number, default: 0 },
+    timeLimit: { type: Number, default: 1 },
     isPublic: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdAt: {
