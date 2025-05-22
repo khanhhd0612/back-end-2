@@ -1,6 +1,7 @@
 const Exam = require('../models/Exam')
 const Score = require('../models/ExamScore')
 const slugify = require('slugify')
+const cloudinary = require('../config/cloudinary');
 
 exports.getAllExam = async (req, res) => {
     try {
@@ -10,7 +11,7 @@ exports.getAllExam = async (req, res) => {
 
         const totalItems = await Exam.countDocuments()
 
-        const exams = await Exam.find()
+        const exams = await Exam.find({ isPublic: true })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -83,30 +84,66 @@ exports.searchExam = async (req, res) => {
 }
 exports.addExam = async (req, res) => {
     try {
-        const { name, sections } = req.body
-        const isPublic = req.body.isPublic
-        const createdBy = req.user.id
+        const { name, timeLimit } = req.body;
+        const isPublic = req.body.isPublic === 'true';
+        const createdBy = req.user.id;
 
-
-        if (!name || !sections || !Array.isArray(sections)) {
-            return res.status(400).json({ message: 'Dữ liệu không hợp lệ: cần có name và sections' })
+        let sections = req.body.sections;
+        if (!name || !sections) {
+            return res.status(400).json({ message: 'Dữ liệu không hợp lệ: cần có name và sections' });
         }
+
+        if (typeof sections === 'string') {
+            try {
+                sections = JSON.parse(sections);
+            } catch (e) {
+                return res.status(400).json({ message: 'Sections không phải là JSON hợp lệ' });
+            }
+        }
+
+        if (!Array.isArray(sections)) {
+            return res.status(400).json({ message: 'Sections phải là mảng' });
+        }
+
+        if (!req.files || !req.files.image) {
+            return res.status(400).json({ message: 'Chưa upload ảnh' });
+        }
+
+        const image = req.files.image;
+
+        const uploadResult = await cloudinary.uploader.upload(
+            image.tempFilePath || image.data,
+            { folder: 'exams' }
+        );
+
         const slug = slugify(name, {
             lower: true,
             strict: true
-        })
+        });
 
-        const newExam = new Exam({ name, slug, isPublic, createdBy, sections })
-        await newExam.save()
+        const newExam = new Exam({
+            name,
+            slug,
+            timeLimit,
+            isPublic,
+            imageUrl: uploadResult.secure_url,
+            createdBy,
+            sections
+        });
 
-        res.status(201).json({ message: 'Đề thi đã được lưu', exam: newExam })
+        await newExam.save();
+
+        res.status(201).json({ message: 'Đề thi đã được lưu', exam: newExam });
     } catch (error) {
-        res.status(500).json({ message: error.message })
+        console.error(error);
+        res.status(500).json({ message: error.message });
     }
 }
+
 exports.updateExam = async (req, res) => {
     const examId = req.params.examId
     const name = req.body.name
+    const timeLimit = req.body.timeLimit
     const isPublic = req.body.isPublic
     const { id, role } = req.user
     try {
@@ -121,8 +158,13 @@ exports.updateExam = async (req, res) => {
             exam.name = name
             exam.slug = slug
         }
-        if (isPublic) {
+        if (isPublic === true) {
             exam.isPublic = isPublic
+        } else if (isPublic === false) {
+            exam.isPublic = isPublic
+        }
+        if(timeLimit) {
+            exam.timeLimit= timeLimit
         }
         await exam.save()
         res.status(200).json({ message: 'Cập nhật thành công' })

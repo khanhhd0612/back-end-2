@@ -40,7 +40,7 @@ exports.addScore = async (req, res) => {
     const { examId, score, time } = req.body
     const userId = req.user.id
     try {
-        if (!examId || !score) return res.status(404).json({ messgae: "Thiếu dữ liệu" })
+        if (!examId) return res.status(404).json({ messgae: "Thiếu dữ liệu" })
         const newScore = new Score({
             examId,
             score,
