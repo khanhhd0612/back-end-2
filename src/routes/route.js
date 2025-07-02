@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { getAllExam, getExam, searchExam, addExam, deleteExam, updateExam, getExamOfUser } = require('../controllers/examController');
-const { getQuestion, updateQuestion, deleteQuestion, addQuestion, getAllQuestion } = require('../controllers/questionController');
+const { getQuestion, updateQuestion, deleteQuestion, addQuestion, getAllQuestion, addImageQuestion } = require('../controllers/questionController');
 const { register, login, loginAdmin } = require('../controllers/authController');
 const { profile, deleteUser, updatePassword, updateRole, getAllUser, updateName, forgotPassword, resetPassword, getAdmin } = require('../controllers/userController');
 const { getSection, addSection, updateSection, deleteSection } = require('../controllers/sectionController');
@@ -39,6 +39,7 @@ router.put('/update/exam/:examId', checkLogin, updateExam);
 router.get('/question/:examId/:sectionId/', checkLogin, getAllQuestion);
 router.get('/question/:examId/:sectionId/:questionId', checkLogin, getQuestion);
 router.post('/question/:examId/:sectionId', checkLogin, addQuestion);
+router.post('/question/image/:examId/:sectionId', checkLogin, addImageQuestion);
 router.put('/question/:examId/:sectionId/:questionId', checkLogin, updateQuestion);
 router.delete('/question/:examId/:sectionId/:questionId', checkLogin, deleteQuestion);
 

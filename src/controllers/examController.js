@@ -87,6 +87,7 @@ exports.addExam = async (req, res) => {
         const { name, timeLimit } = req.body;
         const isPublic = req.body.isPublic === 'true';
         const createdBy = req.user.id;
+        const image = req.files.image;
 
         let sections = req.body.sections;
         if (!name || !sections) {
@@ -109,8 +110,6 @@ exports.addExam = async (req, res) => {
             return res.status(400).json({ message: 'Chưa upload ảnh' });
         }
 
-        const image = req.files.image;
-
         const uploadResult = await cloudinary.uploader.upload(
             image.tempFilePath || image.data,
             { folder: 'exams' }
@@ -127,6 +126,7 @@ exports.addExam = async (req, res) => {
             timeLimit,
             isPublic,
             imageUrl: uploadResult.secure_url,
+            imageId: uploadResult.public_id,
             createdBy,
             sections
         });
@@ -163,8 +163,8 @@ exports.updateExam = async (req, res) => {
         } else if (isPublic === false) {
             exam.isPublic = isPublic
         }
-        if(timeLimit) {
-            exam.timeLimit= timeLimit
+        if (timeLimit) {
+            exam.timeLimit = timeLimit
         }
         await exam.save()
         res.status(200).json({ message: 'Cập nhật thành công' })
@@ -182,6 +182,9 @@ exports.deleteExam = async (req, res) => {
         if (!exam) return res.status(404).json({ message: 'Không tìm thấy bài thi' });
         if (id != exam.createdBy.id && role != "admin") {
             return res.status(404).json({ message: 'Bạn không có quyền xóa bài thi này' });
+        }
+        if (exam.imageId) {
+            await cloudinary.uploader.destroy(exam.imageId);
         }
         await Exam.findByIdAndDelete(examId);
         await Score.deleteMany({ examId });

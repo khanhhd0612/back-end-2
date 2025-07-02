@@ -2,6 +2,9 @@ const mongoose = require('mongoose');
 
 const questionSchema = new mongoose.Schema({
     text: String,
+    isQuestionImage: { type: Boolean, default: false },
+    imageUrl: String,
+    imageId: String,
     answers: [String],
     correctAnswers: [String]
 });
@@ -19,6 +22,7 @@ const examSchema = new mongoose.Schema({
     timeLimit: { type: Number, default: 1 },
     isPublic: { type: Boolean, default: false },
     imageUrl: String,
+    imageId: String,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdAt: {
         type: Date,
