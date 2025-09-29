@@ -2,7 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const connectDB = require('./src/config/database')
-const routes = require('./src/routes/route')
+const routes = require('./src/routes/')
 const fileUpload = require('express-fileupload')
 
 const app = express()

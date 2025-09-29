@@ -1,50 +1,40 @@
-const cloudinary = require('../config/cloudinary');
-const Exam = require('../models/Exam')
+const cloudinary = require("../config/cloudinary")
 
 exports.addQuestion = async (req, res) => {
-    const { examId, sectionId } = req.params
-    const { text, answers, correctAnswers } = req.body
-    const { id, role } = req.user
     try {
-        const exam = await Exam.findById(examId).populate('createdBy', 'name')
-        if (!exam) return res.status(404).json({ message: 'Không tìm thấy bài thi' })
-        if (id != exam.createdBy.id && role != "admin") return res.status(404).json({ message: 'Bạn không có quyền chỉnh sửa đối với bài thi của người khác' })
+        const { text, answers, correctAnswers } = req.body
+        const section = req.section
 
-        const section = exam.sections.id(sectionId)
-        if (!section) return res.status(404).json({ message: 'Không tìm thấy section' })
-
-        const newQuestion = {
-            text,
-            answers,
-            correctAnswers
-        }
+        const newQuestion = { text, answers, correctAnswers }
         section.questions.push(newQuestion)
-        await exam.save()
-        res.status(200).json({ message: 'Thêm câu hỏi thành công', question: section.questions[section.questions.length - 1] });
+        await req.exam.save()
 
+        res.status(200).json({ 
+            message: "Thêm câu hỏi thành công", 
+            question: section.questions[section.questions.length - 1] 
+        })
     } catch (err) {
+        console.log(err)
         res.status(500).json({ message: err.message })
     }
 }
+
 exports.addImageQuestion = async (req, res) => {
-    const { examId, sectionId } = req.params
-    const { text, answers, correctAnswers } = req.body
-    const { id, role } = req.user
-    const image = req.files.image
-
     try {
-        const exam = await Exam.findById(examId).populate('createdBy', 'name')
-        if (!exam) return res.status(404).json({ message: 'Không tìm thấy bài thi' })
-        if (id != exam.createdBy.id && role != "admin") return res.status(404).json({ message: 'Bạn không có quyền chỉnh sửa đối với bài thi của người khác' })
+        if (!req.files || !req.files.image) {
+            return res.status(400).json({ message: "Vui lòng upload ảnh" })
+        }
 
-        const section = exam.sections.id(sectionId)
-        if (!section) return res.status(404).json({ message: 'Không tìm thấy section' })
+        const { text, answers, correctAnswers } = req.body
+        const section = req.section
 
         const uploadResult = await cloudinary.uploader.upload(
-            image.tempFilePath || image.data,
-            { folder: 'questions' }
+            req.files.image.tempFilePath || req.files.image.data,
+            { folder: "questions" }
         )
-        const parsedAnswers = typeof answers === 'string' ? JSON.parse(answers) : answers;
+
+        const parsedAnswers = typeof answers === "string" ? JSON.parse(answers) : answers
+
         const newQuestion = {
             text,
             answers: parsedAnswers,
@@ -55,113 +45,145 @@ exports.addImageQuestion = async (req, res) => {
         }
 
         section.questions.push(newQuestion)
-        await exam.save()
-        res.status(201).json({ message: 'Thêm câu hỏi thành công' });
+        await req.exam.save()
+
+        res.status(201).json({ message: "Thêm câu hỏi thành công" })
     } catch (err) {
+        console.log(err)
         res.status(500).json({ message: err.message })
     }
 }
+
 exports.getQuestion = async (req, res) => {
-    const { examId, sectionId, questionId } = req.params
-    const { id, role } = req.user
     try {
-        const exam = await Exam.findById(examId).populate('createdBy', 'name')
-        if (!exam) return res.status(404).json({ message: 'Không tìm thấy bài thi' })
-        if (id != exam.createdBy.id && role != "admin") return res.status(404).json({ message: 'Bạn không có quyền đối với bài thi của người khác' })
-
-        const section = exam.sections.id(sectionId)
-        if (!section) return res.status(404).json({ message: 'Không tìm thấy section' })
-
-        const question = section.questions.id(questionId)
-        if (!question) return res.status(404).json({ message: 'Không tìm thấy câu hỏi' })
-
-        res.status(200).json({ question })
+        res.status(200).json({ question: req.question })
     } catch (err) {
+        console.log(err)
         res.status(500).json({ message: err.message })
     }
 }
 
 exports.getAllQuestion = async (req, res) => {
-    const { examId, sectionId } = req.params
-    const { id, role } = req.user
     try {
-        const exam = await Exam.findById(examId).populate('createdBy', 'name')
-        if (!exam) return res.status(404).json({ message: 'Không tìm thấy bài thi' })
-        if (id != exam.createdBy.id && role != "admin") return res.status(404).json({ message: 'Bạn không có quyền đối với bài thi của người khác' })
-
-        const section = exam.sections.id(sectionId)
-        if (!section) return res.status(404).json({ message: 'Không tìm thấy section' })
-
-        const question = section.questions
-
-        res.status(200).json({ section })
+        res.status(200).json({ questions: req.section.questions })
     } catch (err) {
+        console.log(err)
+        res.status(500).json({ message: err.message })
+    }
+}
+
+exports.addImageForQuestion = async (req, res) => {
+    try {
+        if (!req.files || !req.files.image) {
+            return res.status(400).json({ message: "Vui lòng upload ảnh" })
+        }
+
+        const question = req.question
+
+        const uploadResult = await cloudinary.uploader.upload(
+            req.files.image.tempFilePath || req.files.image.data,
+            { folder: "questions" }
+        )
+
+        question.isQuestionImage = true
+        question.imageUrl = uploadResult.secure_url
+        question.imageId = uploadResult.public_id
+
+        await req.exam.save()
+
+        res.status(200).json({ 
+            message: "Thêm thành công", 
+            image: uploadResult.secure_url 
+        })
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({ message: err.message })
+    }
+}
+
+exports.updateImageForQuestion = async (req, res) => {
+    try {
+        if (!req.files || !req.files.image) {
+            return res.status(400).json({ message: "Vui lòng upload ảnh" })
+        }
+
+        const question = req.question
+
+        if (question.imageId) {
+            await cloudinary.uploader.destroy(question.imageId)
+        }
+
+        const uploadResult = await cloudinary.uploader.upload(
+            req.files.image.tempFilePath || req.files.image.data,
+            { folder: "questions" }
+        )
+
+        question.isQuestionImage = true
+        question.imageUrl = uploadResult.secure_url
+        question.imageId = uploadResult.public_id
+
+        await req.exam.save()
+
+        res.status(200).json({ message: "Thay đổi thành công" })
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({ message: err.message })
+    }
+}
+
+exports.deleteImageFromQuestion = async (req, res) => {
+    try {
+        const question = req.question
+
+        if (question.imageId) {
+            await cloudinary.uploader.destroy(question.imageId)
+        }
+
+        question.isQuestionImage = false
+        question.imageUrl = ""
+        question.imageId = ""
+
+        await req.exam.save()
+
+        res.status(200).json({ message: "Xóa thành công" })
+    } catch (err) {
+        console.log(err)
         res.status(500).json({ message: err.message })
     }
 }
 
 exports.updateQuestion = async (req, res) => {
-    const { examId, sectionId, questionId } = req.params
-    const { text, answers, correctAnswers } = req.body
-    const { id, role } = req.user
     try {
-        const exam = await Exam.findById(examId).populate('createdBy', 'name')
-        if (!exam) return res.status(404).json({ message: 'Không tìm thấy bài thi' })
-        if (id != exam.createdBy.id && role != "admin") return res.status(404).json({ message: 'Bạn không có quyền chỉnh sửa đối với bài thi của người khác' })
-
-        const section = exam.sections.id(sectionId)
-        if (!section) return res.status(404).json({ message: 'Không tìm thấy section' })
-
-        const question = section.questions.id(questionId)
-        if (!question) return res.status(404).json({ message: 'Không tìm thấy câu hỏi' })
+        const { text, answers, correctAnswers } = req.body
+        const question = req.question
 
         if (text) question.text = text
         if (answers) question.answers = answers
         if (correctAnswers) question.correctAnswers = correctAnswers
 
-        await exam.save()
-        res.status(200).json({ message: 'Câu hỏi được cập nhật thành công', question })
+        await req.exam.save()
+        res.status(200).json({ message: "Cập nhật thành công", question })
     } catch (err) {
+        console.log(err)
         res.status(500).json({ message: err.message })
     }
 }
 
 exports.deleteQuestion = async (req, res) => {
-    const { examId, sectionId, questionId } = req.params;
-    const { id, role } = req.user;
-
     try {
-        const exam = await Exam.findById(examId).populate('createdBy', 'name');
-        if (!exam) {
-            return res.status(404).json({ message: 'Không tìm thấy bài thi' });
-        }
-
-        if (id != exam.createdBy.id && role !== "admin") {
-            return res.status(403).json({ message: 'Bạn không có quyền xóa đối với bài thi của người khác' });
-        }
-
-        const section = exam.sections.id(sectionId);
-        if (!section) {
-            return res.status(404).json({ message: 'Không tìm thấy section' });
-        }
-
-        const questionIndex = section.questions.findIndex(q => q._id.toString() === questionId);
-        if (questionIndex === -1) {
-            return res.status(404).json({ message: 'Không tìm thấy câu hỏi' });
-        }
-
-        const question = section.questions[questionIndex];
+        const section = req.section
+        const question = req.question
 
         if (question.imageId) {
-            await cloudinary.uploader.destroy(question.imageId);
+            await cloudinary.uploader.destroy(question.imageId)
         }
 
-        section.questions.splice(questionIndex, 1);
-        await exam.save();
+        section.questions.pull(question._id)
+        await req.exam.save()
 
-        res.status(200).json({ message: 'Câu hỏi được xóa thành công' });
+        res.status(200).json({ message: "Câu hỏi được xóa thành công" })
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: err.message });
+        console.log(err)
+        res.status(500).json({ message: err.message })
     }
-};
+}
