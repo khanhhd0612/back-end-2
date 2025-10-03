@@ -3,33 +3,44 @@ const Score = require('../models/ExamScore')
 const slugify = require('slugify')
 const cloudinary = require('../config/cloudinary')
 
-// Lấy tất cả exam public (có phân trang)
 exports.getAllExam = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1
         const limit = parseInt(req.query.limit) || 10
         const skip = (page - 1) * limit
 
-        const totalItems = await Exam.countDocuments({ isPublic: true })
+        const filter = { isPublic: true }
 
-        const exams = await Exam.find({ isPublic: true })
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .populate('createdBy', 'name')
+        const [totalItems, exams] = await Promise.all([
+            Exam.countDocuments(filter),
+            Exam.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate('createdBy', 'name')
+        ])
+
+        const dataExams = exams.map(exam => ({
+            id: exam._id,
+            name: exam.name,
+            slug: exam.slug,
+            imageUrl: exam.imageUrl,
+            time: exam.time,
+            createdBy: exam.createdBy?.name || "Unknown",
+            createdAt: exam.createdAt
+        }))
 
         res.json({
             currentPage: page,
             totalPages: Math.ceil(totalItems / limit),
             totalItems,
-            exams
+            exams: dataExams
         })
     } catch (err) {
         res.status(500).json({ message: err.message })
     }
 }
 
-// Lấy 1 exam public theo id
 exports.getExam = async (req, res) => {
     try {
         const exam = await Exam.findOne({
@@ -47,37 +58,48 @@ exports.getExam = async (req, res) => {
     }
 }
 
-// Lấy danh sách exam của user (có phân trang)
 exports.getExamOfUser = async (req, res) => {
     try {
         const userId = req.user.id
         const page = parseInt(req.query.page) || 1
-        const limit = parseInt(req.query.limit) || 10
+        const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 100)
         const skip = (page - 1) * limit
 
-        const totalItems = await Exam.countDocuments({ createdBy: userId })
+        const filter = { createdBy: userId }
 
-        const exams = await Exam.find({ createdBy: userId })
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .populate('createdBy', 'name')
+        const [totalItems, exams] = await Promise.all([
+            Exam.countDocuments(filter),
+            Exam.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate('createdBy', 'name')
+        ])
+
+        const dataExams = exams.map(exam => ({
+            id: exam._id,
+            name: exam.name,
+            slug: exam.slug,
+            imageUrl: exam.imageUrl,
+            time: exam.time,
+            createdBy: exam.createdBy?.name || "Unknown",
+            createdAt: exam.createdAt
+        }))
 
         res.json({
             currentPage: page,
             totalPages: Math.ceil(totalItems / limit),
             totalItems,
-            exams
+            exams: dataExams
         })
     } catch (error) {
         res.status(500).json({ message: error.message })
     }
 }
 
-// Tìm kiếm exam public theo tên
 exports.searchExam = async (req, res) => {
     try {
-        const query = req.query.q || ''
+        const query = (req.query.q || '').trim()
         const exams = await Exam.find({
             name: { $regex: query, $options: 'i' },
             isPublic: true
@@ -89,7 +111,30 @@ exports.searchExam = async (req, res) => {
     }
 }
 
-// Thêm exam mới
+exports.searchExamOfUser = async (req, res) => {
+    try {
+        const createdBy = req.user.id
+        const query = req.query.q || ''
+        const exams = await Exam.find({
+            name: { $regex: query, $options: 'i' },
+            createdBy: createdBy
+        })
+        const dataExams = exams.map(exam => ({
+            id: exam._id,
+            name: exam.name,
+            slug: exam.slug,
+            imageUrl: exam.imageUrl,
+            time: exam.time,
+            createdBy: exam.createdBy?.name || "Unknown",
+            createdAt: exam.createdAt
+        }))
+
+        res.json(dataExams)
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+}
+
 exports.addExam = async (req, res) => {
     try {
         const { name, timeLimit } = req.body
@@ -144,10 +189,9 @@ exports.addExam = async (req, res) => {
     }
 }
 
-// Cập nhật exam (cần middleware isExamOwnerOrAdmin gắn req.exam)
 exports.updateExam = async (req, res) => {
     try {
-        const exam = req.exam // lấy từ middleware
+        const exam = req.exam
         const { name, timeLimit, isPublic } = req.body
 
         if (name) {

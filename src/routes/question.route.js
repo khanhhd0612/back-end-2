@@ -1,5 +1,5 @@
 const express = require('express');
-const { getQuestion, updateQuestion, deleteQuestion, addImageQuestion, addQuestion, getAllQuestion, updateImageForQuestion, addImageForQuestion, deleteImageFromQuestion } = require('../controllers/questionController');
+const { getQuestion, updateQuestion, deleteQuestion, addImageQuestion, searchUserQuestions, addQuestion, getAllQuestion, updateImageForQuestion, addImageForQuestion, deleteImageFromQuestion } = require('../controllers/questionController');
 
 const { checkLogin } = require("../middleware/authMiddleware");
 const { isExamOwnerOrAdmin, findSectionAndQuestion } = require("../middleware/examMiddleware");
@@ -8,6 +8,9 @@ const router = express.Router({ mergeParams: true });
 
 // Lấy tất cả câu hỏi trong section
 router.get('/', checkLogin, isExamOwnerOrAdmin, findSectionAndQuestion, getAllQuestion);
+
+// tìm câu hỏi
+router.get('/search', checkLogin, isExamOwnerOrAdmin, searchUserQuestions);
 
 // Lấy chi tiết 1 câu hỏi
 router.get('/:questionId', checkLogin, isExamOwnerOrAdmin, findSectionAndQuestion, getQuestion);

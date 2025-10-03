@@ -1,4 +1,6 @@
+const { default: mongoose } = require("mongoose")
 const cloudinary = require("../config/cloudinary")
+const Exam = require("../models/Exam")
 
 exports.addQuestion = async (req, res) => {
     try {
@@ -9,9 +11,9 @@ exports.addQuestion = async (req, res) => {
         section.questions.push(newQuestion)
         await req.exam.save()
 
-        res.status(200).json({ 
-            message: "Thêm câu hỏi thành công", 
-            question: section.questions[section.questions.length - 1] 
+        res.status(200).json({
+            message: "Thêm câu hỏi thành công",
+            question: section.questions[section.questions.length - 1]
         })
     } catch (err) {
         console.log(err)
@@ -48,6 +50,32 @@ exports.addImageQuestion = async (req, res) => {
         await req.exam.save()
 
         res.status(201).json({ message: "Thêm câu hỏi thành công" })
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({ message: err.message })
+    }
+}
+
+exports.searchUserQuestions = async (req, res) => {
+    try {
+        const { examId, sectionId } = req.params
+        const query = req.query.q || ""
+
+        const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id })
+        if (!exam) {
+            return res.status(404).json({ message: "Không tìm thấy đề thi" })
+        }
+
+        const section = exam.sections.id(sectionId)
+        if (!section) {
+            return res.status(404).json({ message: "Không tìm thấy section" })
+        }
+
+        const questions = section.questions.filter(q =>
+            q.text && q.text.toLowerCase().includes(query.toLowerCase())
+        )
+
+        res.status(200).json({ results: questions })
     } catch (err) {
         console.log(err)
         res.status(500).json({ message: err.message })
@@ -91,9 +119,9 @@ exports.addImageForQuestion = async (req, res) => {
 
         await req.exam.save()
 
-        res.status(200).json({ 
-            message: "Thêm thành công", 
-            image: uploadResult.secure_url 
+        res.status(200).json({
+            message: "Thêm thành công",
+            image: uploadResult.secure_url
         })
     } catch (err) {
         console.log(err)
