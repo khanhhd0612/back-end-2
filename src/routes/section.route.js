@@ -1,3 +1,4 @@
+// section.route.js
 const express = require('express')
 const { getSection, addSection, updateSection, deleteSection } = require('../controllers/sectionController')
 const { checkLogin } = require("../middleware/authMiddleware")
@@ -11,6 +12,6 @@ router.post('/', checkLogin, isExamOwnerOrAdmin, addSection)
 router.put('/:sectionId', checkLogin, isExamOwnerOrAdmin, updateSection)
 router.delete('/:sectionId', checkLogin, isExamOwnerOrAdmin, deleteSection)
 
-router.use('/:sectionId/questions', checkLogin, isExamOwnerOrAdmin, questionRoutes)
+router.use('/:sectionId/questions', questionRoutes)
 
 module.exports = router
