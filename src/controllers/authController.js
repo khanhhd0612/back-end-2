@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const nodemailer = require('nodemailer')
 const crypto = require('crypto')
+const { sendResetPassword } = require('../services/mailService')
 
 exports.register = async (req, res) => {
     try {
@@ -117,24 +118,7 @@ exports.forgotPassword = async (req, res) => {
         user.resetPasswordToken = token;
         user.resetPasswordExpire = Date.now() + 3600000; // Token hết hạn sau 1 giờ
         await user.save();
-
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
-
-        const resetUrl = `${process.env.FRONT_END_URL}/reset/password/${token}`;
-        const mailOptions = {
-            to: user.email,
-            from: 'khanhhangcn@gmail.com',
-            subject: 'Đặt lại mật khẩu',
-            text: `Nhấn vào link này để đặt lại mật khẩu của bạn: ${resetUrl}`,
-        };
-
-        await transporter.sendMail(mailOptions);
+        await sendResetPassword(user, token);
 
         return res.status(200).json({ message: 'Kiểm tra email của bạn để đặt lại mật khẩu.' });
     } catch (err) {

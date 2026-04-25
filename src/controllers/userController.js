@@ -55,10 +55,10 @@ exports.updateName = async (req, res) => {
 
 exports.updatePassword = async (req, res) => {
     try {
-        const password = req.body.password
+        const newPassword = req.body.newPassword
         const oldPassword = req.body.oldPassword
         const id = req.user.id
-        if (!password) {
+        if (!newPassword) {
             return res.status(400).json({ message: "Mật khẩu không được trống" })
         }
         const user = await User.findById(id)
@@ -69,7 +69,7 @@ exports.updatePassword = async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({ message: "Mật khẩu không đúng" })
         }
-        const hashedPassword = await bcrypt.hash(password, 10)
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
         await User.findByIdAndUpdate(id, { password: hashedPassword }, { new: true })
         res.status(200).json({ message: 'Thay đổi mật khẩu thành công' })
     } catch (err) {
